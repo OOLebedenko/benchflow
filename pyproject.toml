@@ -35,6 +35,9 @@ namespaces = false
 
 [tool.mypy]
 python_version = "3.12"
+plugins = [
+    "pydantic.mypy",
+]
 
 
 [tool.pytest.ini_options]
