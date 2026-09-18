@@ -3,8 +3,7 @@ from collections.abc import Generator
 import pytest
 from testcontainers.community.postgres import PostgresContainer
 
-POSTGRES_IMAGE = "postgres:17"
-POSTGRES_DRIVER = "psycopg"
+from tests.config import POSTGRES_DRIVER, POSTGRES_IMAGE
 
 
 @pytest.fixture(scope="session")
