@@ -1,17 +1,30 @@
 from logging.config import fileConfig
 
 from alembic import context
+from alembic.config import Config
 from sqlalchemy import engine_from_config, pool
 
 from benchflow.config import load_settings
 from benchflow.infrastructure.db.models import Base
 
+
+def resolve_database_url(config: Config) -> str:
+    """Resolve database URL from an explicit override or application settings."""
+
+    override: str | None = config.attributes.get("database_url")
+
+    if override is not None:
+        return override
+
+    return load_settings().database_url
+
+
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config
 
-settings = load_settings()
-config.set_main_option("sqlalchemy.url", settings.database_url)
+database_url = resolve_database_url(config)
+config.set_main_option("sqlalchemy.url", database_url)
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.
