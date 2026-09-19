@@ -133,3 +133,39 @@ async def test_commit_makes_flushed_user_visible(
         stored_user = await reader.find_by_email(user.email)
 
         assert stored_user == user
+
+
+async def test_find_by_id_returns_user(
+        session_factory: async_sessionmaker[AsyncSession],
+) -> None:
+    """Find a persisted user by identifier."""
+
+    user = User(
+        id=uuid4(),
+        email="user@example.com",
+        password_hash="hashed-password",
+    )
+
+    async with session_factory() as session:
+        repository = SqlAlchemyUserRepository(session)
+        flusher = SqlAlchemyFlusher(session)
+
+        repository.add(user)
+        await flusher.flush()
+
+        stored_user = await repository.find_by_id(user.id)
+
+        assert stored_user == user
+
+
+async def test_find_by_id_returns_none(
+        session_factory: async_sessionmaker[AsyncSession],
+) -> None:
+    """Return None when no user has the requested identifier."""
+
+    async with session_factory() as session:
+        repository = SqlAlchemyUserRepository(session)
+
+        user = await repository.find_by_id(uuid4())
+
+        assert user is None
