@@ -11,7 +11,7 @@ class UserRepository(Protocol):
 
         ...
 
-    async def add(self, user: User) -> None:
-        """Persist a user."""
+    def add(self, user: User) -> None:
+        """Add a user to the current unit of work."""
 
         ...

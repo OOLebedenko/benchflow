@@ -3,7 +3,9 @@ from uuid import uuid4
 import pytest
 from pytest_mock import MockerFixture
 
+from benchflow.application.ports.flusher import Flusher
 from benchflow.application.ports.password_hasher import PasswordHasher
+from benchflow.application.ports.transaction_manager import TransactionManager
 from benchflow.application.ports.user_repository import UserRepository
 from benchflow.application.services.auth import (
     AuthService,
@@ -32,9 +34,21 @@ async def test_register_creates_user(
     )
     password_hasher.hash.return_value = "hashed-password"
 
+    flusher = mocker.create_autospec(
+        Flusher,
+        instance=True,
+    )
+
+    transaction_manager = mocker.create_autospec(
+        TransactionManager,
+        instance=True,
+    )
+
     service = AuthService(
         user_repository=repository,
         password_hasher=password_hasher,
+        flusher=flusher,
+        transaction_manager=transaction_manager,
     )
 
     user = await service.register(
@@ -47,14 +61,16 @@ async def test_register_creates_user(
     assert user.password_hash == "hashed-password"
 
     # Registration must check uniqueness, hash the password,
-    # and persist exactly the created user.
+    # add the created user, flush pending changes, and commit the transaction.
     repository.find_by_email.assert_awaited_once_with(
         "user@example.com"
     )
     password_hasher.hash.assert_awaited_once_with(
         "secret-password"
     )
-    repository.add.assert_awaited_once_with(user)
+    repository.add.assert_called_once_with(user)
+    flusher.flush.assert_awaited_once_with()
+    transaction_manager.commit.assert_awaited_once_with()
 
 
 async def test_register_rejects_existing_email(
@@ -80,9 +96,21 @@ async def test_register_rejects_existing_email(
         instance=True,
     )
 
+    flusher = mocker.create_autospec(
+        Flusher,
+        instance=True,
+    )
+
+    transaction_manager = mocker.create_autospec(
+        TransactionManager,
+        instance=True,
+    )
+
     service = AuthService(
         user_repository=repository,
         password_hasher=password_hasher,
+        flusher=flusher,
+        transaction_manager=transaction_manager,
     )
 
     with pytest.raises(EmailAlreadyExistsError):
@@ -92,9 +120,11 @@ async def test_register_rejects_existing_email(
         )
 
     # Registration must stop immediately after detecting the duplicate:
-    # no expensive password hashing and no persistence attempt.
+    # no expensive password hashing, persistence, flush, or commit.
     repository.find_by_email.assert_awaited_once_with(
         "user@example.com"
     )
     password_hasher.hash.assert_not_awaited()
-    repository.add.assert_not_awaited()
+    repository.add.assert_not_called()
+    flusher.flush.assert_not_awaited()
+    transaction_manager.commit.assert_not_awaited()
