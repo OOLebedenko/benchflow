@@ -1,5 +1,4 @@
 from typing import Literal
-from uuid import UUID
 
 from pydantic import BaseModel, EmailStr, Field
 
@@ -16,13 +15,6 @@ class LoginRequest(BaseModel):
 
     email: EmailStr
     password: str
-
-
-class UserResponse(BaseModel):
-    """Represent registered user output."""
-
-    id: UUID
-    email: str
 
 
 class TokenResponse(BaseModel):

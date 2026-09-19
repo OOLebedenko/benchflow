@@ -18,8 +18,8 @@ from benchflow.presentation.schemas.auth import (
     LoginRequest,
     RegisterRequest,
     TokenResponse,
-    UserResponse,
 )
+from benchflow.presentation.schemas.user import UserResponse
 
 router = APIRouter(
     prefix="/auth",
@@ -81,9 +81,6 @@ async def login(
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid email or password",
-            headers={
-                "WWW-Authenticate": "Bearer",
-            },
         ) from error
 
     return TokenResponse(
