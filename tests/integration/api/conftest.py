@@ -23,6 +23,9 @@ def client(
 
     settings = Settings(
         database_url=migrated_database_url,
+        jwt_secret="a" * 32,
+        jwt_algorithm="HS256",
+        access_token_expire_minutes=15,
     )
 
     # Redirect the application lifespan from the local database configured

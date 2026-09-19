@@ -90,3 +90,84 @@ def test_register_rejects_short_password(
     )
 
     assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
+
+
+def test_login_returns_access_token(
+        client: TestClient,
+) -> None:
+    """Return an access token for valid credentials."""
+
+    credentials = {
+        "email": "user@example.com",
+        "password": "secret-password",
+    }
+
+    # Register through the public API so the login test exercises
+    # the same persisted password hash used by the real application.
+    register_response = client.post(
+        "/auth/register",
+        json=credentials,
+    )
+
+    assert register_response.status_code == status.HTTP_201_CREATED
+
+    response = client.post(
+        "/auth/login",
+        json=credentials,
+    )
+
+    assert response.status_code == status.HTTP_200_OK
+
+    data = response.json()
+
+    assert isinstance(data["access_token"], str)
+    assert data["access_token"]
+    assert data["token_type"] == "bearer"
+
+
+def test_login_rejects_unknown_email(
+        client: TestClient,
+) -> None:
+    """Reject login when the email does not exist."""
+
+    response = client.post(
+        "/auth/login",
+        json={
+            "email": "missing@example.com",
+            "password": "secret-password",
+        },
+    )
+
+    assert response.status_code == status.HTTP_401_UNAUTHORIZED
+    assert response.json() == {
+        "detail": "Invalid email or password"
+    }
+
+
+def test_login_rejects_wrong_password(
+        client: TestClient,
+) -> None:
+    """Reject login when the password is incorrect."""
+
+    register_response = client.post(
+        "/auth/register",
+        json={
+            "email": "user@example.com",
+            "password": "secret-password",
+        },
+    )
+
+    assert register_response.status_code == status.HTTP_201_CREATED
+
+    response = client.post(
+        "/auth/login",
+        json={
+            "email": "user@example.com",
+            "password": "wrong-password",
+        },
+    )
+
+    assert response.status_code == status.HTTP_401_UNAUTHORIZED
+    assert response.json() == {
+        "detail": "Invalid email or password"
+    }
