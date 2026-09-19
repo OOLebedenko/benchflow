@@ -1,11 +1,15 @@
 from fastapi import FastAPI
 
-app = FastAPI(
-    title="BenchFlow",
-    version="0.1.0",
-)
+from benchflow.presentation.lifespan import lifespan
+from benchflow.presentation.routes.auth import router as auth_router
+
+app = FastAPI(lifespan=lifespan)
+
+app.include_router(auth_router)
 
 
 @app.get("/health")
-def health() -> dict[str, str]:
+async def health() -> dict[str, str]:
+    """Return application health status."""
+
     return {"status": "ok"}
