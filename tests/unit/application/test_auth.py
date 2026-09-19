@@ -3,7 +3,10 @@ from uuid import uuid4
 import pytest
 from pytest_mock import MockerFixture
 
-from benchflow.application.ports.flusher import Flusher
+from benchflow.application.ports.flusher import (
+    Flusher,
+    UniqueConstraintViolationError,
+)
 from benchflow.application.ports.password_hasher import PasswordHasher
 from benchflow.application.ports.transaction_manager import TransactionManager
 from benchflow.application.ports.user_repository import UserRepository
@@ -127,4 +130,62 @@ async def test_register_rejects_existing_email(
     password_hasher.hash.assert_not_awaited()
     repository.add.assert_not_called()
     flusher.flush.assert_not_awaited()
+    transaction_manager.commit.assert_not_awaited()
+
+
+async def test_register_rejects_email_conflict_on_flush(
+        mocker: MockerFixture,
+) -> None:
+    """Reject registration when email uniqueness fails during flush."""
+
+    # Simulate the race-condition case: the preliminary lookup finds
+    # no user, but another transaction claims the email before our flush.
+    repository = mocker.create_autospec(
+        UserRepository,
+        instance=True,
+    )
+    repository.find_by_email.return_value = None
+
+    password_hasher = mocker.create_autospec(
+        PasswordHasher,
+        instance=True,
+    )
+    password_hasher.hash.return_value = "hashed-password"
+
+    flusher = mocker.create_autospec(
+        Flusher,
+        instance=True,
+    )
+    flusher.flush.side_effect = UniqueConstraintViolationError
+
+    transaction_manager = mocker.create_autospec(
+        TransactionManager,
+        instance=True,
+    )
+
+    service = AuthService(
+        user_repository=repository,
+        password_hasher=password_hasher,
+        flusher=flusher,
+        transaction_manager=transaction_manager,
+    )
+
+    with pytest.raises(EmailAlreadyExistsError):
+        await service.register(
+            email="user@example.com",
+            password="secret-password",
+        )
+
+    # The conflict occurs after the user has already been constructed
+    # and added to the current unit of work.
+    repository.find_by_email.assert_awaited_once_with(
+        "user@example.com"
+    )
+    password_hasher.hash.assert_awaited_once_with(
+        "secret-password"
+    )
+    repository.add.assert_called_once()
+    flusher.flush.assert_awaited_once_with()
+
+    # A transaction that failed during flush must never be committed.
     transaction_manager.commit.assert_not_awaited()

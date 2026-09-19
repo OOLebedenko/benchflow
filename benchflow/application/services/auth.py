@@ -1,6 +1,9 @@
 from uuid import uuid4
 
-from benchflow.application.ports.flusher import Flusher
+from benchflow.application.ports.flusher import (
+    Flusher,
+    UniqueConstraintViolationError,
+)
 from benchflow.application.ports.password_hasher import PasswordHasher
 from benchflow.application.ports.transaction_manager import TransactionManager
 from benchflow.application.ports.user_repository import UserRepository
@@ -48,7 +51,11 @@ class AuthService:
 
         self._user_repository.add(user)
 
-        await self._flusher.flush()
+        try:
+            await self._flusher.flush()
+        except UniqueConstraintViolationError as error:
+            raise EmailAlreadyExistsError from error
+
         await self._transaction_manager.commit()
 
         return user

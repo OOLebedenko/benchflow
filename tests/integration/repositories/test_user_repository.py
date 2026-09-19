@@ -1,9 +1,11 @@
 from uuid import uuid4
 
 import pytest
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from benchflow.application.ports.flusher import (
+    UniqueConstraintViolationError,
+)
 from benchflow.domain.user import User
 from benchflow.infrastructure.db.flusher import SqlAlchemyFlusher
 from benchflow.infrastructure.db.transaction_manager import (
@@ -86,7 +88,7 @@ async def test_flush_rejects_duplicate_email(
         # detected only when the pending INSERT is flushed.
         repository.add(second_user)
 
-        with pytest.raises(IntegrityError):
+        with pytest.raises(UniqueConstraintViolationError):
             await flusher.flush()
 
 
