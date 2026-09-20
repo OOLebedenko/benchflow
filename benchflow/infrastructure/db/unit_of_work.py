@@ -25,8 +25,17 @@ class SqlAlchemyUnitOfWork:
             session: AsyncSession,
     ) -> None:
         self._session = session
+        self._pending_adds: list[Base] = []
         self._pending_updates: list[PendingUpdate] = []
         self._pending_deletes: list[Base] = []
+
+    def stage_add(
+            self,
+            model: Base,
+    ) -> None:
+        """Stage a persistence model for addition."""
+
+        self._pending_adds.append(model)
 
     def stage_update(
             self,
@@ -61,6 +70,7 @@ class SqlAlchemyUnitOfWork:
     async def rollback(self) -> None:
         """Roll back the current unit of work."""
 
+        self._pending_adds.clear()
         self._pending_updates.clear()
         self._pending_deletes.clear()
 
@@ -73,6 +83,7 @@ class SqlAlchemyUnitOfWork:
         """Execute a unit-of-work operation with rollback on failure."""
 
         try:
+            self._apply_pending_adds()
             await self._apply_pending_updates()
             await self._apply_pending_deletes()
             await operation()
@@ -93,6 +104,14 @@ class SqlAlchemyUnitOfWork:
             await self.rollback()
         except Exception as rollback_error:
             raise rollback_error from error
+
+    def _apply_pending_adds(self) -> None:
+        """Register staged additions with SQLAlchemy."""
+
+        pending_adds = self._pending_adds
+        self._pending_adds = []
+
+        self._session.add_all(pending_adds)
 
     async def _apply_pending_updates(self) -> None:
         """Apply staged updates to persistence models."""

@@ -114,7 +114,7 @@ async def test_find_by_id_returns_none(
 async def test_add_persists_bench(
         session_factory: async_sessionmaker[AsyncSession],
 ) -> None:
-    """Persist a bench through the repository."""
+    """Persist a staged bench addition."""
 
     bench = Bench(
         id=uuid4(),
@@ -130,7 +130,7 @@ async def test_add_persists_bench(
         )
 
         repository.add(bench)
-        await session.commit()
+        await unit_of_work.commit()
 
     async with session_factory() as session:
         model = await session.get(

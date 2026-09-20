@@ -48,8 +48,11 @@ class SqlAlchemyBenchRepository:
 
         return self._to_domain(model)
 
-    def add(self, bench: Bench) -> None:
-        """Add a bench to the current SQLAlchemy unit of work."""
+    def add(
+            self,
+            bench: Bench,
+    ) -> None:
+        """Stage a bench addition in the current unit of work."""
 
         model = BenchModel(
             id=bench.id,
@@ -57,7 +60,7 @@ class SqlAlchemyBenchRepository:
             status=bench.status.value,
         )
 
-        self._session.add(model)
+        self._unit_of_work.stage_add(model)
 
     def update(
             self,
