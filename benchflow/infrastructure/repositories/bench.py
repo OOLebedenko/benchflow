@@ -5,16 +5,19 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from benchflow.domain.bench import Bench, BenchStatus
 from benchflow.infrastructure.db.models.bench import BenchModel
+from benchflow.infrastructure.db.unit_of_work import SqlAlchemyUnitOfWork
 
 
 class SqlAlchemyBenchRepository:
-    """Read benches with SQLAlchemy."""
+    """Persist benches with SQLAlchemy."""
 
     def __init__(
             self,
             session: AsyncSession,
+            unit_of_work: SqlAlchemyUnitOfWork,
     ) -> None:
         self._session = session
+        self._unit_of_work = unit_of_work
 
     async def list_all(self) -> list[Bench]:
         """Return all benches."""
@@ -44,6 +47,50 @@ class SqlAlchemyBenchRepository:
             return None
 
         return self._to_domain(model)
+
+    def add(
+            self,
+            bench: Bench,
+    ) -> None:
+        """Stage a bench addition in the current unit of work."""
+
+        model = BenchModel(
+            id=bench.id,
+            name=bench.name,
+            status=bench.status.value,
+        )
+
+        self._unit_of_work.stage_add(model)
+
+    def update(
+            self,
+            bench: Bench,
+    ) -> None:
+        """Stage a bench update in the current unit of work."""
+
+        name = bench.name
+        status = bench.status.value
+
+        def apply(model: BenchModel) -> None:
+            model.name = name
+            model.status = status
+
+        self._unit_of_work.stage_update(
+            BenchModel,
+            bench.id,
+            apply,
+        )
+
+    def delete(
+            self,
+            bench: Bench,
+    ) -> None:
+        """Stage a bench deletion in the current unit of work."""
+
+        self._unit_of_work.stage_delete(
+            BenchModel,
+            bench.id,
+        )
 
     @staticmethod
     def _to_domain(

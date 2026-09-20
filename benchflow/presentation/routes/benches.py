@@ -7,15 +7,30 @@ from benchflow.application.services.benches import (
     BenchNotFoundError,
     BenchService,
 )
-from benchflow.presentation.dependencies.benches import (
-    get_bench_service,
+from benchflow.domain.bench import Bench
+from benchflow.presentation.dependencies.benches import get_bench_service
+from benchflow.presentation.schemas.benches import (
+    BenchCreateRequest,
+    BenchResponse,
+    BenchUpdateRequest,
 )
-from benchflow.presentation.schemas.benches import BenchResponse
 
 router = APIRouter(
     prefix="/benches",
     tags=["benches"],
 )
+
+
+def _to_response(
+        bench: Bench,
+) -> BenchResponse:
+    """Convert a domain bench to an HTTP response."""
+
+    return BenchResponse(
+        id=bench.id,
+        name=bench.name,
+        status=bench.status,
+    )
 
 
 @router.get(
@@ -33,11 +48,7 @@ async def list_benches(
     benches = await bench_service.list_benches()
 
     return [
-        BenchResponse(
-            id=bench.id,
-            name=bench.name,
-            status=bench.status,
-        )
+        _to_response(bench)
         for bench in benches
     ]
 
@@ -63,8 +74,77 @@ async def get_bench(
             detail="Bench not found",
         ) from error
 
-    return BenchResponse(
-        id=bench.id,
-        name=bench.name,
-        status=bench.status,
+    return _to_response(bench)
+
+
+@router.post(
+    "",
+    response_model=BenchResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_bench(
+        data: BenchCreateRequest,
+        bench_service: Annotated[
+            BenchService,
+            Depends(get_bench_service),
+        ],
+) -> BenchResponse:
+    """Create a bench."""
+
+    bench = await bench_service.create_bench(
+        name=data.name,
+        status=data.status,
     )
+
+    return _to_response(bench)
+
+
+@router.patch(
+    "/{bench_id}",
+    response_model=BenchResponse,
+)
+async def update_bench(
+        bench_id: UUID,
+        data: BenchUpdateRequest,
+        bench_service: Annotated[
+            BenchService,
+            Depends(get_bench_service),
+        ],
+) -> BenchResponse:
+    """Update a bench."""
+
+    try:
+        bench = await bench_service.update_bench(
+            bench_id=bench_id,
+            name=data.name,
+            status=data.status,
+        )
+    except BenchNotFoundError as error:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Bench not found",
+        ) from error
+
+    return _to_response(bench)
+
+
+@router.delete(
+    "/{bench_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+async def delete_bench(
+        bench_id: UUID,
+        bench_service: Annotated[
+            BenchService,
+            Depends(get_bench_service),
+        ],
+) -> None:
+    """Delete a bench."""
+
+    try:
+        await bench_service.delete_bench(bench_id)
+    except BenchNotFoundError as error:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Bench not found",
+        ) from error

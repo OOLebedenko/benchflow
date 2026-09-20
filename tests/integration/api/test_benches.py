@@ -102,3 +102,115 @@ async def test_get_bench_returns_not_found(
     assert response.json() == {
         "detail": "Bench not found"
     }
+
+
+async def test_create_bench(
+        client: TestClient,
+        session_factory: async_sessionmaker[AsyncSession],
+) -> None:
+    """Create and persist a bench."""
+
+    response = client.post(
+        "/benches",
+        json={
+            "name": "Bench 1",
+            "status": "maintenance",
+        },
+    )
+
+    assert response.status_code == status.HTTP_201_CREATED
+
+    data = response.json()
+
+    assert data["name"] == "Bench 1"
+    assert data["status"] == "maintenance"
+
+    async with session_factory() as session:
+        model = await session.get(
+            BenchModel,
+            data["id"],
+        )
+
+        assert model is not None
+        assert model.name == "Bench 1"
+        assert model.status == BenchStatus.MAINTENANCE.value
+
+
+async def test_create_bench_uses_available_status_by_default(
+        client: TestClient,
+) -> None:
+    """Use available status when it is omitted."""
+
+    response = client.post(
+        "/benches",
+        json={
+            "name": "Bench 1",
+        },
+    )
+
+    assert response.status_code == status.HTTP_201_CREATED
+    assert response.json()["status"] == "available"
+
+
+def test_update_bench_returns_not_found(
+        client: TestClient,
+) -> None:
+    """Return 404 when updating an unknown bench."""
+
+    bench_id = uuid4()
+
+    response = client.patch(
+        f"/benches/{bench_id}",
+        json={
+            "status": "offline",
+        },
+    )
+
+    assert response.status_code == status.HTTP_404_NOT_FOUND
+    assert response.json() == {
+        "detail": "Bench not found",
+    }
+
+
+def test_delete_bench(
+        client: TestClient,
+) -> None:
+    """Delete an existing bench."""
+
+    create_response = client.post(
+        "/benches",
+        json={
+            "name": "Bench 1",
+            "status": "available",
+        },
+    )
+    bench_id = create_response.json()["id"]
+
+    response = client.delete(
+        f"/benches/{bench_id}"
+    )
+
+    assert response.status_code == status.HTTP_204_NO_CONTENT
+
+    get_response = client.get(
+        f"/benches/{bench_id}"
+    )
+
+    assert get_response.status_code == status.HTTP_404_NOT_FOUND
+
+
+def test_delete_bench_returns_not_found(
+        client: TestClient,
+) -> None:
+    """Return 404 when deleting an unknown bench."""
+
+    bench_id = uuid4()
+
+    response = client.delete(
+        f"/benches/{bench_id}"
+    )
+
+    assert response.status_code == status.HTTP_404_NOT_FOUND
+    assert response.json() == {
+        "detail": "Bench not found",
+    }

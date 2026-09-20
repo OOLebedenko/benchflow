@@ -1,3 +1,5 @@
+from uuid import uuid4
+
 import pytest
 from psycopg.errors import UniqueViolation
 from pytest_mock import MockerFixture
@@ -7,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from benchflow.application.ports.unit_of_work import (
     UniqueConstraintViolationError,
 )
-from benchflow.infrastructure.db.models.base import Base
+from benchflow.infrastructure.db.models.bench import BenchModel
 from benchflow.infrastructure.db.unit_of_work import (
     SqlAlchemyUnitOfWork,
 )
@@ -72,13 +74,23 @@ async def test_flush_applies_staged_delete(
         AsyncSession,
         instance=True,
     )
-    model = mocker.Mock(spec=Base)
+
+    model_id = uuid4()
+    model = mocker.Mock(spec=BenchModel)
+    session.get.return_value = model
 
     unit_of_work = SqlAlchemyUnitOfWork(session)
 
-    unit_of_work.stage_delete(model)
+    unit_of_work.stage_delete(
+        BenchModel,
+        model_id,
+    )
     await unit_of_work.flush()
 
+    session.get.assert_awaited_once_with(
+        BenchModel,
+        model_id,
+    )
     session.delete.assert_awaited_once_with(model)
     session.flush.assert_awaited_once_with()
 
@@ -92,14 +104,19 @@ async def test_rollback_discards_staged_delete(
         AsyncSession,
         instance=True,
     )
-    model = mocker.Mock(spec=Base)
+
+    model_id = uuid4()
 
     unit_of_work = SqlAlchemyUnitOfWork(session)
 
-    unit_of_work.stage_delete(model)
+    unit_of_work.stage_delete(
+        BenchModel,
+        model_id,
+    )
     await unit_of_work.rollback()
     await unit_of_work.flush()
 
+    session.get.assert_not_awaited()
     session.delete.assert_not_awaited()
     session.flush.assert_awaited_once_with()
 
