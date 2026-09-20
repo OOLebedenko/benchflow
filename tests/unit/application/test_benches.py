@@ -4,9 +4,11 @@ import pytest
 from pytest_mock import MockerFixture
 
 from benchflow.application.ports.bench_repository import BenchRepository
+from benchflow.application.ports.unit_of_work import UnitOfWork
 from benchflow.application.services.benches import (
     BenchNotFoundError,
     BenchService,
+    BenchWriteService,
 )
 from benchflow.domain.bench import Bench, BenchStatus
 
@@ -95,3 +97,36 @@ async def test_get_bench_rejects_unknown_id(
     repository.find_by_id.assert_awaited_once_with(
         bench_id
     )
+
+
+async def test_create_bench(
+        mocker: MockerFixture,
+) -> None:
+    """Create and persist a bench."""
+
+    repository = mocker.create_autospec(
+        BenchRepository,
+        instance=True,
+    )
+
+    unit_of_work = mocker.create_autospec(
+        UnitOfWork,
+        instance=True,
+    )
+
+    service = BenchWriteService(
+        bench_repository=repository,
+        unit_of_work=unit_of_work,
+    )
+
+    bench = await service.create_bench(
+        name="Bench 1",
+        status=BenchStatus.MAINTENANCE,
+    )
+
+    assert bench.name == "Bench 1"
+    assert bench.status is BenchStatus.MAINTENANCE
+
+    repository.add.assert_called_once_with(bench)
+    unit_of_work.flush.assert_awaited_once_with()
+    unit_of_work.commit.assert_awaited_once_with()
