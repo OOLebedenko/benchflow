@@ -170,3 +170,50 @@ async def test_register_rejects_email_conflict_on_flush(
 
     # A unit of work that failed during flush must never be committed.
     unit_of_work.commit.assert_not_awaited()
+
+
+async def test_register_rejects_email_conflict_on_commit(
+        mocker: MockerFixture,
+) -> None:
+    """Reject registration when email uniqueness fails during commit."""
+
+    repository = mocker.create_autospec(
+        UserRepository,
+        instance=True,
+    )
+    repository.find_by_email.return_value = None
+
+    password_hasher = mocker.create_autospec(
+        PasswordHasher,
+        instance=True,
+    )
+    password_hasher.hash.return_value = "hashed-password"
+
+    unit_of_work = mocker.create_autospec(
+        UnitOfWork,
+        instance=True,
+    )
+    unit_of_work.commit.side_effect = UniqueConstraintViolationError
+
+    service = AuthService(
+        user_repository=repository,
+        password_hasher=password_hasher,
+        unit_of_work=unit_of_work,
+    )
+
+    with pytest.raises(EmailAlreadyExistsError):
+        await service.register(
+            email="user@example.com",
+            password="secret-password",
+        )
+
+    repository.find_by_email.assert_awaited_once_with(
+        "user@example.com"
+    )
+    password_hasher.hash.assert_awaited_once_with(
+        "secret-password"
+    )
+    repository.add.assert_called_once()
+
+    unit_of_work.flush.assert_awaited_once_with()
+    unit_of_work.commit.assert_awaited_once_with()
