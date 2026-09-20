@@ -8,7 +8,7 @@ from benchflow.infrastructure.db.models.bench import BenchModel
 
 
 class SqlAlchemyBenchRepository:
-    """Read benches with SQLAlchemy."""
+    """Persist benches with SQLAlchemy."""
 
     def __init__(
             self,
@@ -44,6 +44,17 @@ class SqlAlchemyBenchRepository:
             return None
 
         return self._to_domain(model)
+
+    def add(self, bench: Bench) -> None:
+        """Add a bench to the current SQLAlchemy unit of work."""
+
+        model = BenchModel(
+            id=bench.id,
+            name=bench.name,
+            status=bench.status.value,
+        )
+
+        self._session.add(model)
 
     @staticmethod
     def _to_domain(

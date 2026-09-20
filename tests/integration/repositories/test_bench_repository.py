@@ -96,3 +96,35 @@ async def test_find_by_id_returns_none(
         bench = await repository.find_by_id(uuid4())
 
         assert bench is None
+
+
+async def test_add_persists_bench(
+        session_factory: async_sessionmaker[AsyncSession],
+) -> None:
+    """Persist a bench through the repository."""
+
+    bench = Bench(
+        id=uuid4(),
+        name="Bench 1",
+        status=BenchStatus.AVAILABLE,
+    )
+
+    async with session_factory() as session:
+        repository = SqlAlchemyBenchRepository(session)
+
+        repository.add(bench)
+        await session.commit()
+
+    async with session_factory() as session:
+        model = await session.get(
+            BenchModel,
+            bench.id,
+        )
+
+        assert model is not None
+        assert model.id == bench.id
+        assert model.name == bench.name
+        assert model.status == bench.status.value
+
+        await session.delete(model)
+        await session.commit()
