@@ -102,3 +102,51 @@ async def test_get_bench_returns_not_found(
     assert response.json() == {
         "detail": "Bench not found"
     }
+
+
+async def test_create_bench(
+        client: TestClient,
+        session_factory: async_sessionmaker[AsyncSession],
+) -> None:
+    """Create and persist a bench."""
+
+    response = client.post(
+        "/benches",
+        json={
+            "name": "Bench 1",
+            "status": "maintenance",
+        },
+    )
+
+    assert response.status_code == status.HTTP_201_CREATED
+
+    data = response.json()
+
+    assert data["name"] == "Bench 1"
+    assert data["status"] == "maintenance"
+
+    async with session_factory() as session:
+        model = await session.get(
+            BenchModel,
+            data["id"],
+        )
+
+        assert model is not None
+        assert model.name == "Bench 1"
+        assert model.status == BenchStatus.MAINTENANCE.value
+
+
+async def test_create_bench_uses_available_status_by_default(
+        client: TestClient,
+) -> None:
+    """Use available status when it is omitted."""
+
+    response = client.post(
+        "/benches",
+        json={
+            "name": "Bench 1",
+        },
+    )
+
+    assert response.status_code == status.HTTP_201_CREATED
+    assert response.json()["status"] == "available"

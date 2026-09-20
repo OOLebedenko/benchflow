@@ -6,11 +6,16 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from benchflow.application.services.benches import (
     BenchNotFoundError,
     BenchService,
+    BenchWriteService,
 )
 from benchflow.presentation.dependencies.benches import (
     get_bench_service,
+    get_bench_write_service,
 )
-from benchflow.presentation.schemas.benches import BenchResponse
+from benchflow.presentation.schemas.benches import (
+    BenchCreateRequest,
+    BenchResponse,
+)
 
 router = APIRouter(
     prefix="/benches",
@@ -62,6 +67,32 @@ async def get_bench(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Bench not found",
         ) from error
+
+    return BenchResponse(
+        id=bench.id,
+        name=bench.name,
+        status=bench.status,
+    )
+
+
+@router.post(
+    "",
+    response_model=BenchResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_bench(
+        data: BenchCreateRequest,
+        bench_service: Annotated[
+            BenchWriteService,
+            Depends(get_bench_write_service),
+        ],
+) -> BenchResponse:
+    """Create a bench."""
+
+    bench = await bench_service.create_bench(
+        name=data.name,
+        status=data.status,
+    )
 
     return BenchResponse(
         id=bench.id,
