@@ -19,11 +19,13 @@ async def get_bench_service(
 ) -> BenchService:
     """Provide bench service for the current request."""
 
-    repository = SqlAlchemyBenchRepository(session)
-
-    return BenchService(
-        bench_repository=repository,
+    unit_of_work = SqlAlchemyUnitOfWork(session)
+    repository = SqlAlchemyBenchRepository(
+        session,
+        unit_of_work,
     )
+
+    return BenchService(repository)
 
 
 async def get_bench_write_service(
@@ -31,8 +33,11 @@ async def get_bench_write_service(
 ) -> BenchWriteService:
     """Provide bench write service for the current request."""
 
-    repository = SqlAlchemyBenchRepository(session)
     unit_of_work = SqlAlchemyUnitOfWork(session)
+    repository = SqlAlchemyBenchRepository(
+        session,
+        unit_of_work,
+    )
 
     return BenchWriteService(
         bench_repository=repository,

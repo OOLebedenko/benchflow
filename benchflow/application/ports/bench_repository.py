@@ -21,3 +21,8 @@ class BenchRepository(Protocol):
     def add(self, bench: Bench) -> None:
         """Add a bench to the current unit of work."""
         ...
+
+    def update(self, bench: Bench) -> None:
+        """Update a bench in the current unit of work."""
+        ...
+

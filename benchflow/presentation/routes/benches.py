@@ -8,6 +8,7 @@ from benchflow.application.services.benches import (
     BenchService,
     BenchWriteService,
 )
+from benchflow.domain.bench import Bench
 from benchflow.presentation.dependencies.benches import (
     get_bench_service,
     get_bench_write_service,
@@ -15,6 +16,7 @@ from benchflow.presentation.dependencies.benches import (
 from benchflow.presentation.schemas.benches import (
     BenchCreateRequest,
     BenchResponse,
+    BenchUpdateRequest,
 )
 
 router = APIRouter(
@@ -23,26 +25,34 @@ router = APIRouter(
 )
 
 
+def _to_response(
+        bench: Bench,
+) -> BenchResponse:
+    """Convert a domain bench to an HTTP response."""
+
+    return BenchResponse(
+        id=bench.id,
+        name=bench.name,
+        status=bench.status,
+    )
+
+
 @router.get(
     "",
     response_model=list[BenchResponse],
 )
 async def list_benches(
-        bench_service: Annotated[
+        read_service: Annotated[
             BenchService,
             Depends(get_bench_service),
         ],
 ) -> list[BenchResponse]:
     """Return all benches."""
 
-    benches = await bench_service.list_benches()
+    benches = await read_service.list_benches()
 
     return [
-        BenchResponse(
-            id=bench.id,
-            name=bench.name,
-            status=bench.status,
-        )
+        _to_response(bench)
         for bench in benches
     ]
 
@@ -68,11 +78,7 @@ async def get_bench(
             detail="Bench not found",
         ) from error
 
-    return BenchResponse(
-        id=bench.id,
-        name=bench.name,
-        status=bench.status,
-    )
+    return _to_response(bench)
 
 
 @router.post(
@@ -94,8 +100,33 @@ async def create_bench(
         status=data.status,
     )
 
-    return BenchResponse(
-        id=bench.id,
-        name=bench.name,
-        status=bench.status,
-    )
+    return _to_response(bench)
+
+
+@router.patch(
+    "/{bench_id}",
+    response_model=BenchResponse,
+)
+async def update_bench(
+        bench_id: UUID,
+        data: BenchUpdateRequest,
+        bench_service: Annotated[
+            BenchWriteService,
+            Depends(get_bench_write_service),
+        ],
+) -> BenchResponse:
+    """Update a bench."""
+
+    try:
+        bench = await bench_service.update_bench(
+            bench_id=bench_id,
+            name=data.name,
+            status=data.status,
+        )
+    except BenchNotFoundError as error:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Bench not found",
+        ) from error
+
+    return _to_response(bench)

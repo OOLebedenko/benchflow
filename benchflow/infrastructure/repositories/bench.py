@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from benchflow.domain.bench import Bench, BenchStatus
 from benchflow.infrastructure.db.models.bench import BenchModel
+from benchflow.infrastructure.db.unit_of_work import SqlAlchemyUnitOfWork
 
 
 class SqlAlchemyBenchRepository:
@@ -13,8 +14,10 @@ class SqlAlchemyBenchRepository:
     def __init__(
             self,
             session: AsyncSession,
+            unit_of_work: SqlAlchemyUnitOfWork,
     ) -> None:
         self._session = session
+        self._unit_of_work = unit_of_work
 
     async def list_all(self) -> list[Bench]:
         """Return all benches."""
@@ -55,6 +58,25 @@ class SqlAlchemyBenchRepository:
         )
 
         self._session.add(model)
+
+    def update(
+            self,
+            bench: Bench,
+    ) -> None:
+        """Stage a bench update in the current unit of work."""
+
+        name = bench.name
+        status = bench.status.value
+
+        def apply(model: BenchModel) -> None:
+            model.name = name
+            model.status = status
+
+        self._unit_of_work.stage_update(
+            BenchModel,
+            bench.id,
+            apply,
+        )
 
     @staticmethod
     def _to_domain(

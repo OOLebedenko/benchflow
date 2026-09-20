@@ -150,3 +150,23 @@ async def test_create_bench_uses_available_status_by_default(
 
     assert response.status_code == status.HTTP_201_CREATED
     assert response.json()["status"] == "available"
+
+
+def test_update_bench_returns_not_found(
+        client: TestClient,
+) -> None:
+    """Return 404 when updating an unknown bench."""
+
+    bench_id = uuid4()
+
+    response = client.patch(
+        f"/benches/{bench_id}",
+        json={
+            "status": "offline",
+        },
+    )
+
+    assert response.status_code == status.HTTP_404_NOT_FOUND
+    assert response.json() == {
+        "detail": "Bench not found",
+    }

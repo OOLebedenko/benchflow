@@ -69,3 +69,31 @@ class BenchWriteService:
         await self._unit_of_work.commit()
 
         return bench
+
+    async def update_bench(
+            self,
+            bench_id: UUID,
+            name: str | None,
+            status: BenchStatus | None,
+    ) -> Bench:
+        """Update an existing bench."""
+
+        bench = await self._bench_repository.find_by_id(
+            bench_id
+        )
+
+        if bench is None:
+            raise BenchNotFoundError
+
+        if name is not None:
+            bench.name = name
+
+        if status is not None:
+            bench.status = status
+
+        self._bench_repository.update(bench)
+
+        await self._unit_of_work.flush()
+        await self._unit_of_work.commit()
+
+        return bench
