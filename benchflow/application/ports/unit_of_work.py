@@ -1,6 +1,10 @@
 from typing import Protocol
 
 
+class UniqueConstraintViolationError(Exception):
+    """Raised when a unit of work violates a uniqueness constraint."""
+
+
 class UnitOfWork(Protocol):
     """Define transactional unit-of-work operations."""
 

@@ -3,9 +3,7 @@ from uuid import uuid4
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from benchflow.application.ports.flusher import (
-    UniqueConstraintViolationError,
-)
+from benchflow.application.ports.unit_of_work import UniqueConstraintViolationError
 from benchflow.domain.user import User
 from benchflow.infrastructure.db.flusher import SqlAlchemyFlusher
 from benchflow.infrastructure.db.transaction_manager import (

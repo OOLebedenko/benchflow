@@ -2,9 +2,7 @@ from psycopg.errors import UniqueViolation
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from benchflow.application.ports.flusher import (
-    UniqueConstraintViolationError,
-)
+from benchflow.application.ports.unit_of_work import UniqueConstraintViolationError
 
 
 class SqlAlchemyFlusher:

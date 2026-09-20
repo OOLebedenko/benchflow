@@ -2,10 +2,10 @@ from uuid import uuid4
 
 from benchflow.application.ports.flusher import (
     Flusher,
-    UniqueConstraintViolationError,
 )
 from benchflow.application.ports.password_hasher import PasswordHasher
 from benchflow.application.ports.transaction_manager import TransactionManager
+from benchflow.application.ports.unit_of_work import UniqueConstraintViolationError
 from benchflow.application.ports.user_repository import UserRepository
 from benchflow.domain.user import User
 
