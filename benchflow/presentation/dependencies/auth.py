@@ -12,9 +12,8 @@ from benchflow.application.services.current_user import (
 )
 from benchflow.application.services.login import LoginService
 from benchflow.domain.user import User
-from benchflow.infrastructure.db.flusher import SqlAlchemyFlusher
-from benchflow.infrastructure.db.transaction_manager import (
-    SqlAlchemyTransactionManager,
+from benchflow.infrastructure.db.unit_of_work import (
+    SqlAlchemyUnitOfWork,
 )
 from benchflow.infrastructure.repositories.user import (
     SqlAlchemyUserRepository,
@@ -39,19 +38,14 @@ async def get_auth_service(
 ) -> AuthService:
     """Provide authentication service for the current request."""
 
-    # All persistence adapters receive the same session, so they operate
-    # inside the same unit of work and database transaction.
     repository = SqlAlchemyUserRepository(session)
-    flusher = SqlAlchemyFlusher(session)
-    transaction_manager = SqlAlchemyTransactionManager(session)
-
+    unit_of_work = SqlAlchemyUnitOfWork(session)
     password_hasher = PwdlibPasswordHasher()
 
     return AuthService(
         user_repository=repository,
         password_hasher=password_hasher,
-        flusher=flusher,
-        transaction_manager=transaction_manager,
+        unit_of_work=unit_of_work,
     )
 
 

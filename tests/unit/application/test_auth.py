@@ -3,12 +3,11 @@ from uuid import uuid4
 import pytest
 from pytest_mock import MockerFixture
 
-from benchflow.application.ports.flusher import (
-    Flusher,
-    UniqueConstraintViolationError,
-)
 from benchflow.application.ports.password_hasher import PasswordHasher
-from benchflow.application.ports.transaction_manager import TransactionManager
+from benchflow.application.ports.unit_of_work import (
+    UniqueConstraintViolationError,
+    UnitOfWork,
+)
 from benchflow.application.ports.user_repository import UserRepository
 from benchflow.application.services.auth import (
     AuthService,
@@ -37,21 +36,15 @@ async def test_register_creates_user(
     )
     password_hasher.hash.return_value = "hashed-password"
 
-    flusher = mocker.create_autospec(
-        Flusher,
-        instance=True,
-    )
-
-    transaction_manager = mocker.create_autospec(
-        TransactionManager,
+    unit_of_work = mocker.create_autospec(
+        UnitOfWork,
         instance=True,
     )
 
     service = AuthService(
         user_repository=repository,
         password_hasher=password_hasher,
-        flusher=flusher,
-        transaction_manager=transaction_manager,
+        unit_of_work=unit_of_work,
     )
 
     user = await service.register(
@@ -64,7 +57,7 @@ async def test_register_creates_user(
     assert user.password_hash == "hashed-password"
 
     # Registration must check uniqueness, hash the password,
-    # add the created user, flush pending changes, and commit the transaction.
+    # add the created user, flush changes, and commit the unit of work.
     repository.find_by_email.assert_awaited_once_with(
         "user@example.com"
     )
@@ -72,8 +65,8 @@ async def test_register_creates_user(
         "secret-password"
     )
     repository.add.assert_called_once_with(user)
-    flusher.flush.assert_awaited_once_with()
-    transaction_manager.commit.assert_awaited_once_with()
+    unit_of_work.flush.assert_awaited_once_with()
+    unit_of_work.commit.assert_awaited_once_with()
 
 
 async def test_register_rejects_existing_email(
@@ -99,21 +92,15 @@ async def test_register_rejects_existing_email(
         instance=True,
     )
 
-    flusher = mocker.create_autospec(
-        Flusher,
-        instance=True,
-    )
-
-    transaction_manager = mocker.create_autospec(
-        TransactionManager,
+    unit_of_work = mocker.create_autospec(
+        UnitOfWork,
         instance=True,
     )
 
     service = AuthService(
         user_repository=repository,
         password_hasher=password_hasher,
-        flusher=flusher,
-        transaction_manager=transaction_manager,
+        unit_of_work=unit_of_work,
     )
 
     with pytest.raises(EmailAlreadyExistsError):
@@ -129,8 +116,8 @@ async def test_register_rejects_existing_email(
     )
     password_hasher.hash.assert_not_awaited()
     repository.add.assert_not_called()
-    flusher.flush.assert_not_awaited()
-    transaction_manager.commit.assert_not_awaited()
+    unit_of_work.flush.assert_not_awaited()
+    unit_of_work.commit.assert_not_awaited()
 
 
 async def test_register_rejects_email_conflict_on_flush(
@@ -152,22 +139,16 @@ async def test_register_rejects_email_conflict_on_flush(
     )
     password_hasher.hash.return_value = "hashed-password"
 
-    flusher = mocker.create_autospec(
-        Flusher,
+    unit_of_work = mocker.create_autospec(
+        UnitOfWork,
         instance=True,
     )
-    flusher.flush.side_effect = UniqueConstraintViolationError
-
-    transaction_manager = mocker.create_autospec(
-        TransactionManager,
-        instance=True,
-    )
+    unit_of_work.flush.side_effect = UniqueConstraintViolationError
 
     service = AuthService(
         user_repository=repository,
         password_hasher=password_hasher,
-        flusher=flusher,
-        transaction_manager=transaction_manager,
+        unit_of_work=unit_of_work,
     )
 
     with pytest.raises(EmailAlreadyExistsError):
@@ -185,7 +166,54 @@ async def test_register_rejects_email_conflict_on_flush(
         "secret-password"
     )
     repository.add.assert_called_once()
-    flusher.flush.assert_awaited_once_with()
+    unit_of_work.flush.assert_awaited_once_with()
 
-    # A transaction that failed during flush must never be committed.
-    transaction_manager.commit.assert_not_awaited()
+    # A unit of work that failed during flush must never be committed.
+    unit_of_work.commit.assert_not_awaited()
+
+
+async def test_register_rejects_email_conflict_on_commit(
+        mocker: MockerFixture,
+) -> None:
+    """Reject registration when email uniqueness fails during commit."""
+
+    repository = mocker.create_autospec(
+        UserRepository,
+        instance=True,
+    )
+    repository.find_by_email.return_value = None
+
+    password_hasher = mocker.create_autospec(
+        PasswordHasher,
+        instance=True,
+    )
+    password_hasher.hash.return_value = "hashed-password"
+
+    unit_of_work = mocker.create_autospec(
+        UnitOfWork,
+        instance=True,
+    )
+    unit_of_work.commit.side_effect = UniqueConstraintViolationError
+
+    service = AuthService(
+        user_repository=repository,
+        password_hasher=password_hasher,
+        unit_of_work=unit_of_work,
+    )
+
+    with pytest.raises(EmailAlreadyExistsError):
+        await service.register(
+            email="user@example.com",
+            password="secret-password",
+        )
+
+    repository.find_by_email.assert_awaited_once_with(
+        "user@example.com"
+    )
+    password_hasher.hash.assert_awaited_once_with(
+        "secret-password"
+    )
+    repository.add.assert_called_once()
+
+    unit_of_work.flush.assert_awaited_once_with()
+    unit_of_work.commit.assert_awaited_once_with()
