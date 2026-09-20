@@ -1,11 +1,10 @@
 from uuid import uuid4
 
-from benchflow.application.ports.flusher import (
-    Flusher,
-)
 from benchflow.application.ports.password_hasher import PasswordHasher
-from benchflow.application.ports.transaction_manager import TransactionManager
-from benchflow.application.ports.unit_of_work import UniqueConstraintViolationError
+from benchflow.application.ports.unit_of_work import (
+    UniqueConstraintViolationError,
+    UnitOfWork,
+)
 from benchflow.application.ports.user_repository import UserRepository
 from benchflow.domain.user import User
 
@@ -21,13 +20,11 @@ class AuthService:
             self,
             user_repository: UserRepository,
             password_hasher: PasswordHasher,
-            flusher: Flusher,
-            transaction_manager: TransactionManager,
+            unit_of_work: UnitOfWork,
     ) -> None:
         self._user_repository = user_repository
         self._password_hasher = password_hasher
-        self._flusher = flusher
-        self._transaction_manager = transaction_manager
+        self._unit_of_work = unit_of_work
 
     async def register(
             self,
@@ -52,10 +49,9 @@ class AuthService:
         self._user_repository.add(user)
 
         try:
-            await self._flusher.flush()
+            await self._unit_of_work.flush()
+            await self._unit_of_work.commit()
         except UniqueConstraintViolationError as error:
             raise EmailAlreadyExistsError from error
-
-        await self._transaction_manager.commit()
 
         return user

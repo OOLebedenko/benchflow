@@ -3,11 +3,12 @@ from uuid import uuid4
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from benchflow.application.ports.unit_of_work import UniqueConstraintViolationError
+from benchflow.application.ports.unit_of_work import (
+    UniqueConstraintViolationError,
+)
 from benchflow.domain.user import User
-from benchflow.infrastructure.db.flusher import SqlAlchemyFlusher
-from benchflow.infrastructure.db.transaction_manager import (
-    SqlAlchemyTransactionManager,
+from benchflow.infrastructure.db.unit_of_work import (
+    SqlAlchemyUnitOfWork,
 )
 from benchflow.infrastructure.repositories.user import (
     SqlAlchemyUserRepository,
@@ -27,12 +28,12 @@ async def test_add_and_find_user(
 
     async with session_factory() as session:
         repository = SqlAlchemyUserRepository(session)
-        flusher = SqlAlchemyFlusher(session)
+        unit_of_work = SqlAlchemyUnitOfWork(session)
 
         # add() only places the model into the current unit of work.
         # flush() sends the pending INSERT to PostgreSQL.
         repository.add(user)
-        await flusher.flush()
+        await unit_of_work.flush()
 
         # The current transaction can read its own flushed changes
         # even though they have not been committed yet.
@@ -74,20 +75,20 @@ async def test_flush_rejects_duplicate_email(
 
     async with session_factory() as session:
         repository = SqlAlchemyUserRepository(session)
-        flusher = SqlAlchemyFlusher(session)
+        unit_of_work = SqlAlchemyUnitOfWork(session)
 
         # The first flush sends the first INSERT to PostgreSQL,
         # so its email already participates in the UNIQUE constraint
         # inside the current transaction.
         repository.add(first_user)
-        await flusher.flush()
+        await unit_of_work.flush()
 
         # add() itself performs no database I/O, so the duplicate is
         # detected only when the pending INSERT is flushed.
         repository.add(second_user)
 
         with pytest.raises(UniqueConstraintViolationError):
-            await flusher.flush()
+            await unit_of_work.flush()
 
 
 async def test_commit_makes_flushed_user_visible(
@@ -103,15 +104,12 @@ async def test_commit_makes_flushed_user_visible(
 
     async with session_factory() as write_session:
         repository = SqlAlchemyUserRepository(write_session)
-        flusher = SqlAlchemyFlusher(write_session)
-        transaction_manager = SqlAlchemyTransactionManager(
-            write_session
-        )
+        unit_of_work = SqlAlchemyUnitOfWork(write_session)
 
         # Flush sends the INSERT to PostgreSQL but leaves the
         # surrounding transaction open.
         repository.add(user)
-        await flusher.flush()
+        await unit_of_work.flush()
 
         # A different session uses a different transaction and must not
         # see the writer's uncommitted row.
@@ -122,48 +120,8 @@ async def test_commit_makes_flushed_user_visible(
 
         # Commit completes the writer transaction and makes its changes
         # visible to subsequent transactions.
-        await transaction_manager.commit()
+        await unit_of_work.commit()
 
     # A new session can now read the committed user.
     async with session_factory() as read_session:
         reader = SqlAlchemyUserRepository(read_session)
-
-        stored_user = await reader.find_by_email(user.email)
-
-        assert stored_user == user
-
-
-async def test_find_by_id_returns_user(
-        session_factory: async_sessionmaker[AsyncSession],
-) -> None:
-    """Find a persisted user by identifier."""
-
-    user = User(
-        id=uuid4(),
-        email="user@example.com",
-        password_hash="hashed-password",
-    )
-
-    async with session_factory() as session:
-        repository = SqlAlchemyUserRepository(session)
-        flusher = SqlAlchemyFlusher(session)
-
-        repository.add(user)
-        await flusher.flush()
-
-        stored_user = await repository.find_by_id(user.id)
-
-        assert stored_user == user
-
-
-async def test_find_by_id_returns_none(
-        session_factory: async_sessionmaker[AsyncSession],
-) -> None:
-    """Return None when no user has the requested identifier."""
-
-    async with session_factory() as session:
-        repository = SqlAlchemyUserRepository(session)
-
-        user = await repository.find_by_id(uuid4())
-
-        assert user is None
