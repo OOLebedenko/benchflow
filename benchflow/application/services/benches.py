@@ -10,13 +10,15 @@ class BenchNotFoundError(Exception):
 
 
 class BenchService:
-    """Provide bench read operations."""
+    """Provide bench operations."""
 
     def __init__(
             self,
             bench_repository: BenchRepository,
+            unit_of_work: UnitOfWork,
     ) -> None:
         self._bench_repository = bench_repository
+        self._unit_of_work = unit_of_work
 
     async def list_benches(self) -> list[Bench]:
         """Return all benches."""
@@ -37,18 +39,6 @@ class BenchService:
             raise BenchNotFoundError
 
         return bench
-
-
-class BenchWriteService:
-    """Provide bench write operations."""
-
-    def __init__(
-            self,
-            bench_repository: BenchRepository,
-            unit_of_work: UnitOfWork,
-    ) -> None:
-        self._bench_repository = bench_repository
-        self._unit_of_work = unit_of_work
 
     async def create_bench(
             self,

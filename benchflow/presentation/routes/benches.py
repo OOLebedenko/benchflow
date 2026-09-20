@@ -6,13 +6,9 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from benchflow.application.services.benches import (
     BenchNotFoundError,
     BenchService,
-    BenchWriteService,
 )
 from benchflow.domain.bench import Bench
-from benchflow.presentation.dependencies.benches import (
-    get_bench_service,
-    get_bench_write_service,
-)
+from benchflow.presentation.dependencies.benches import get_bench_service
 from benchflow.presentation.schemas.benches import (
     BenchCreateRequest,
     BenchResponse,
@@ -42,14 +38,14 @@ def _to_response(
     response_model=list[BenchResponse],
 )
 async def list_benches(
-        read_service: Annotated[
+        bench_service: Annotated[
             BenchService,
             Depends(get_bench_service),
         ],
 ) -> list[BenchResponse]:
     """Return all benches."""
 
-    benches = await read_service.list_benches()
+    benches = await bench_service.list_benches()
 
     return [
         _to_response(bench)
@@ -89,8 +85,8 @@ async def get_bench(
 async def create_bench(
         data: BenchCreateRequest,
         bench_service: Annotated[
-            BenchWriteService,
-            Depends(get_bench_write_service),
+            BenchService,
+            Depends(get_bench_service),
         ],
 ) -> BenchResponse:
     """Create a bench."""
@@ -111,8 +107,8 @@ async def update_bench(
         bench_id: UUID,
         data: BenchUpdateRequest,
         bench_service: Annotated[
-            BenchWriteService,
-            Depends(get_bench_write_service),
+            BenchService,
+            Depends(get_bench_service),
         ],
 ) -> BenchResponse:
     """Update a bench."""
