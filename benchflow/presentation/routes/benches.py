@@ -13,8 +13,8 @@ from benchflow.presentation.dependencies.benches import (
 from benchflow.presentation.schemas.benches import BenchResponse
 
 router = APIRouter(
-    prefix="/test-benches",
-    tags=["test-benches"],
+    prefix="/benches",
+    tags=["benches"],
 )
 
 
@@ -28,7 +28,7 @@ async def list_benches(
             Depends(get_bench_service),
         ],
 ) -> list[BenchResponse]:
-    """Return all test benches."""
+    """Return all benches."""
 
     benches = await bench_service.list_benches()
 
@@ -53,7 +53,7 @@ async def get_bench(
             Depends(get_bench_service),
         ],
 ) -> BenchResponse:
-    """Return a test bench by its identifier."""
+    """Return a bench by its identifier."""
 
     try:
         bench = await bench_service.get_bench(bench_id)

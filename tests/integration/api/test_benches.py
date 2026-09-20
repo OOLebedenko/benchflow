@@ -12,7 +12,7 @@ async def test_list_benches_returns_all_benches(
         client: TestClient,
         session_factory: async_sessionmaker[AsyncSession],
 ) -> None:
-    """Return all persisted test benches."""
+    """Return all persisted benches."""
 
     first_id = uuid4()
     second_id = uuid4()
@@ -35,7 +35,7 @@ async def test_list_benches_returns_all_benches(
         )
         await session.commit()
 
-    response = client.get("/test-benches")
+    response = client.get("/benches")
 
     assert response.status_code == status.HTTP_200_OK
 
@@ -60,7 +60,7 @@ async def test_get_bench_returns_bench(
         client: TestClient,
         session_factory: async_sessionmaker[AsyncSession],
 ) -> None:
-    """Return the requested test bench."""
+    """Return the requested bench."""
 
     bench_id = uuid4()
 
@@ -76,7 +76,7 @@ async def test_get_bench_returns_bench(
         await session.commit()
 
     response = client.get(
-        f"/test-benches/{bench_id}"
+        f"/benches/{bench_id}"
     )
 
     assert response.status_code == status.HTTP_200_OK
@@ -90,12 +90,12 @@ async def test_get_bench_returns_bench(
 async def test_get_bench_returns_not_found(
         client: TestClient,
 ) -> None:
-    """Return 404 when the requested test bench does not exist."""
+    """Return 404 when the requested bench does not exist."""
 
     bench_id = uuid4()
 
     response = client.get(
-        f"/test-benches/{bench_id}"
+        f"/benches/{bench_id}"
     )
 
     assert response.status_code == status.HTTP_404_NOT_FOUND
