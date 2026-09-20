@@ -16,6 +16,11 @@ type PendingUpdate = tuple[
     Callable[[Any], None],
 ]
 
+type PendingDelete = tuple[
+    type[Base],
+    Any,
+]
+
 
 class SqlAlchemyUnitOfWork:
     """Manage a transactional unit of work with SQLAlchemy."""
@@ -27,7 +32,7 @@ class SqlAlchemyUnitOfWork:
         self._session = session
         self._pending_adds: list[Base] = []
         self._pending_updates: list[PendingUpdate] = []
-        self._pending_deletes: list[Base] = []
+        self._pending_deletes: list[PendingDelete] = []
 
     def stage_add(
             self,
@@ -51,11 +56,14 @@ class SqlAlchemyUnitOfWork:
 
     def stage_delete(
             self,
-            model: Base,
+            model_type: type[Base],
+            model_id: Any,
     ) -> None:
         """Stage a persistence model for deletion."""
 
-        self._pending_deletes.append(model)
+        self._pending_deletes.append(
+            (model_type, model_id)
+        )
 
     async def flush(self) -> None:
         """Synchronize pending changes with the database."""
@@ -133,12 +141,22 @@ class SqlAlchemyUnitOfWork:
             apply(model)
 
     async def _apply_pending_deletes(self) -> None:
-        """Register staged deletions with SQLAlchemy."""
+        """Apply staged deletions to persistence models."""
 
         pending_deletes = self._pending_deletes
         self._pending_deletes = []
 
-        for model in pending_deletes:
+        for model_type, model_id in pending_deletes:
+            model = await self._session.get(
+                model_type,
+                model_id,
+            )
+
+            if model is None:
+                raise RuntimeError(
+                    f"{model_type.__name__} {model_id} not found"
+                )
+
             await self._session.delete(model)
 
     @staticmethod

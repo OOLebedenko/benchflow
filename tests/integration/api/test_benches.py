@@ -170,3 +170,47 @@ def test_update_bench_returns_not_found(
     assert response.json() == {
         "detail": "Bench not found",
     }
+
+
+def test_delete_bench(
+        client: TestClient,
+) -> None:
+    """Delete an existing bench."""
+
+    create_response = client.post(
+        "/benches",
+        json={
+            "name": "Bench 1",
+            "status": "available",
+        },
+    )
+    bench_id = create_response.json()["id"]
+
+    response = client.delete(
+        f"/benches/{bench_id}"
+    )
+
+    assert response.status_code == status.HTTP_204_NO_CONTENT
+
+    get_response = client.get(
+        f"/benches/{bench_id}"
+    )
+
+    assert get_response.status_code == status.HTTP_404_NOT_FOUND
+
+
+def test_delete_bench_returns_not_found(
+        client: TestClient,
+) -> None:
+    """Return 404 when deleting an unknown bench."""
+
+    bench_id = uuid4()
+
+    response = client.delete(
+        f"/benches/{bench_id}"
+    )
+
+    assert response.status_code == status.HTTP_404_NOT_FOUND
+    assert response.json() == {
+        "detail": "Bench not found",
+    }

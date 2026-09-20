@@ -186,3 +186,45 @@ async def test_update_persists_bench(
         assert model is not None
         assert model.name == "Updated bench"
         assert model.status == BenchStatus.OFFLINE.value
+
+
+async def test_delete_removes_bench(
+        session_factory: async_sessionmaker[AsyncSession],
+) -> None:
+    """Remove a staged bench deletion."""
+
+    bench_id = uuid4()
+
+    async with session_factory() as session:
+        session.add(
+            BenchModel(
+                id=bench_id,
+                name="Bench 1",
+                status=BenchStatus.AVAILABLE.value,
+            )
+        )
+        await session.commit()
+
+    bench = Bench(
+        id=bench_id,
+        name="Bench 1",
+        status=BenchStatus.AVAILABLE,
+    )
+
+    async with session_factory() as session:
+        unit_of_work = SqlAlchemyUnitOfWork(session)
+        repository = SqlAlchemyBenchRepository(
+            session,
+            unit_of_work,
+        )
+
+        repository.delete(bench)
+        await unit_of_work.commit()
+
+    async with session_factory() as session:
+        model = await session.get(
+            BenchModel,
+            bench_id,
+        )
+
+        assert model is None

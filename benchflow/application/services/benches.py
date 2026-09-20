@@ -87,3 +87,21 @@ class BenchService:
         await self._unit_of_work.commit()
 
         return bench
+
+    async def delete_bench(
+            self,
+            bench_id: UUID,
+    ) -> None:
+        """Delete an existing bench."""
+
+        bench = await self._bench_repository.find_by_id(
+            bench_id
+        )
+
+        if bench is None:
+            raise BenchNotFoundError
+
+        self._bench_repository.delete(bench)
+
+        await self._unit_of_work.flush()
+        await self._unit_of_work.commit()

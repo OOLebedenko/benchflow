@@ -135,3 +135,50 @@ async def test_create_bench(
     repository.add.assert_called_once_with(bench)
     unit_of_work.flush.assert_awaited_once_with()
     unit_of_work.commit.assert_awaited_once_with()
+
+
+async def test_delete_bench(
+        service: BenchService,
+        repository: MagicMock,
+        unit_of_work: MagicMock,
+) -> None:
+    """Delete an existing bench."""
+
+    bench = Bench(
+        id=uuid4(),
+        name="Bench 1",
+        status=BenchStatus.AVAILABLE,
+    )
+
+    repository.find_by_id.return_value = bench
+
+    await service.delete_bench(bench.id)
+
+    repository.find_by_id.assert_awaited_once_with(
+        bench.id
+    )
+    repository.delete.assert_called_once_with(bench)
+    unit_of_work.flush.assert_awaited_once_with()
+    unit_of_work.commit.assert_awaited_once_with()
+
+
+async def test_delete_bench_rejects_unknown_id(
+        service: BenchService,
+        repository: MagicMock,
+        unit_of_work: MagicMock,
+) -> None:
+    """Reject deletion of an unknown bench."""
+
+    bench_id = uuid4()
+
+    repository.find_by_id.return_value = None
+
+    with pytest.raises(BenchNotFoundError):
+        await service.delete_bench(bench_id)
+
+    repository.find_by_id.assert_awaited_once_with(
+        bench_id
+    )
+    repository.delete.assert_not_called()
+    unit_of_work.flush.assert_not_awaited()
+    unit_of_work.commit.assert_not_awaited()

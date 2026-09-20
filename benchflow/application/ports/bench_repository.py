@@ -18,11 +18,23 @@ class BenchRepository(Protocol):
         """Find a bench by its identifier."""
         ...
 
-    def add(self, bench: Bench) -> None:
-        """Add a bench to the current unit of work."""
+    def add(
+            self,
+            bench: Bench,
+    ) -> None:
+        """Stage a bench addition."""
         ...
 
-    def update(self, bench: Bench) -> None:
-        """Update a bench in the current unit of work."""
+    def update(
+            self,
+            bench: Bench,
+    ) -> None:
+        """Stage a bench update."""
         ...
 
+    def delete(
+            self,
+            bench: Bench,
+    ) -> None:
+        """Stage a bench deletion."""
+        ...

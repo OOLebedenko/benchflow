@@ -126,3 +126,25 @@ async def update_bench(
         ) from error
 
     return _to_response(bench)
+
+
+@router.delete(
+    "/{bench_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+async def delete_bench(
+        bench_id: UUID,
+        bench_service: Annotated[
+            BenchService,
+            Depends(get_bench_service),
+        ],
+) -> None:
+    """Delete a bench."""
+
+    try:
+        await bench_service.delete_bench(bench_id)
+    except BenchNotFoundError as error:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Bench not found",
+        ) from error

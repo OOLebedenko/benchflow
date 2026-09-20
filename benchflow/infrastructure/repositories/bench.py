@@ -81,6 +81,17 @@ class SqlAlchemyBenchRepository:
             apply,
         )
 
+    def delete(
+            self,
+            bench: Bench,
+    ) -> None:
+        """Stage a bench deletion in the current unit of work."""
+
+        self._unit_of_work.stage_delete(
+            BenchModel,
+            bench.id,
+        )
+
     @staticmethod
     def _to_domain(
             model: BenchModel,
