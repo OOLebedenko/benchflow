@@ -1,6 +1,6 @@
 from uuid import uuid4
 
-from httpx2 import AsyncClient
+from fastapi.testclient import TestClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from benchflow.domain.bench import BenchStatus
@@ -10,7 +10,7 @@ from benchflow.infrastructure.db.models.run import RunModel
 
 
 async def test_start_run(
-        client: AsyncClient,
+        client: TestClient,
         session_factory: async_sessionmaker[AsyncSession],
 ) -> None:
     """Start a run on an available bench."""
@@ -28,7 +28,7 @@ async def test_start_run(
         )
         await session.commit()
 
-    response = await client.post(
+    response = client.post(
         f"/benches/{bench_id}/runs",
     )
 
