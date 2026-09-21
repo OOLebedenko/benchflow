@@ -38,8 +38,11 @@ async def get_auth_service(
 ) -> AuthService:
     """Provide authentication service for the current request."""
 
-    repository = SqlAlchemyUserRepository(session)
     unit_of_work = SqlAlchemyUnitOfWork(session)
+    repository = SqlAlchemyUserRepository(
+        session,
+        unit_of_work,
+    )
     password_hasher = PwdlibPasswordHasher()
 
     return AuthService(
@@ -58,7 +61,11 @@ async def get_login_service(
 ) -> LoginService:
     """Provide login service for the current request."""
 
-    repository = SqlAlchemyUserRepository(session)
+    unit_of_work = SqlAlchemyUnitOfWork(session)
+    repository = SqlAlchemyUserRepository(
+        session,
+        unit_of_work,
+    )
     password_hasher = PwdlibPasswordHasher()
 
     return LoginService(
@@ -77,7 +84,11 @@ async def build_current_user_service(
 ) -> CurrentUserService:
     """Provide current user service for the current request."""
 
-    repository = SqlAlchemyUserRepository(session)
+    unit_of_work = SqlAlchemyUnitOfWork(session)
+    repository = SqlAlchemyUserRepository(
+        session,
+        unit_of_work,
+    )
 
     return CurrentUserService(
         user_repository=repository,
