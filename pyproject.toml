@@ -1,0 +1,55 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+
+[project]
+name = "benchflow"
+version = "0.1.0"
+requires-python = ">=3.12"
+
+dependencies = [
+    "fastapi==0.141.1",
+    "sqlalchemy==2.0.53",
+    "psycopg[binary]==3.3.5",
+    "pydantic-settings==2.15.0",
+    "email-validator==2.3.0",
+    "alembic==1.20.0",
+    "pwdlib[argon2]==0.3.1",
+    "PyJWT==2.14.0",
+    "redis==8.1.0",
+    "uvicorn==0.53.0",
+]
+
+
+[project.optional-dependencies]
+dev = [
+    "httpx2",
+    "mypy",
+    "pytest",
+    "pytest-asyncio",
+    "pytest-mock",
+    "ruff",
+    "testcontainers[postgres]",
+]
+
+
+[tool.setuptools.packages.find]
+include = ["benchflow*"]
+namespaces = false
+
+
+[tool.mypy]
+python_version = "3.12"
+plugins = [
+    "pydantic.mypy",
+]
+
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+filterwarnings = [
+    "error::pytest.PytestUnraisableExceptionWarning",
+    "error:coroutine .* was never awaited:RuntimeWarning",
+    "ignore:The anyio.abc.BlockingPortal alias is deprecated:DeprecationWarning:starlette.testclient",
+]
