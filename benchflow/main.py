@@ -3,6 +3,7 @@ from fastapi import FastAPI
 from benchflow.presentation.lifespan import lifespan
 from benchflow.presentation.routes.auth import router as auth_router
 from benchflow.presentation.routes.benches import router as benches_router
+from benchflow.presentation.routes.runs import router as runs_router
 from benchflow.presentation.routes.users import router as users_router
 
 app = FastAPI(lifespan=lifespan)
@@ -10,6 +11,7 @@ app = FastAPI(lifespan=lifespan)
 app.include_router(auth_router)
 app.include_router(users_router)
 app.include_router(benches_router)
+app.include_router(runs_router)
 
 
 @app.get("/health")
