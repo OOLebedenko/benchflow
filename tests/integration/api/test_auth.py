@@ -2,10 +2,15 @@ from uuid import UUID
 
 from fastapi import status
 from fastapi.testclient import TestClient
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
+
+from benchflow.domain.user import UserRole
+from benchflow.infrastructure.db.models.user import UserModel
 
 
-def test_register_creates_user(
+async def test_register_creates_user(
         client: TestClient,
+        session_factory: async_sessionmaker[AsyncSession],
 ) -> None:
     """Register a new user."""
 
@@ -20,14 +25,23 @@ def test_register_creates_user(
     assert response.status_code == status.HTTP_201_CREATED
 
     data = response.json()
+    user_id = UUID(data["id"])
 
     assert data["email"] == "user@example.com"
-    assert UUID(data["id"])
 
     # Neither the plaintext password nor its hash may be exposed
     # through the public API response.
     assert "password" not in data
     assert "password_hash" not in data
+
+    async with session_factory() as session:
+        user = await session.get(
+            UserModel,
+            user_id,
+        )
+
+        assert user is not None
+        assert user.role == UserRole.USER.value
 
 
 def test_register_rejects_existing_email(

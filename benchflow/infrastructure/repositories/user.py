@@ -3,7 +3,7 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from benchflow.domain.user import User
+from benchflow.domain.user import User, UserRole
 from benchflow.infrastructure.db.models.user import UserModel
 from benchflow.infrastructure.db.unit_of_work import SqlAlchemyUnitOfWork
 
@@ -35,6 +35,7 @@ class SqlAlchemyUserRepository:
             id=model.id,
             email=model.email,
             password_hash=model.password_hash,
+            role=UserRole(model.role),
         )
 
     async def find_by_email(self, email: str) -> User | None:
@@ -54,6 +55,7 @@ class SqlAlchemyUserRepository:
             id=model.id,
             email=model.email,
             password_hash=model.password_hash,
+            role=UserRole(model.role),
         )
 
     def add(self, user: User) -> None:
@@ -63,6 +65,7 @@ class SqlAlchemyUserRepository:
             id=user.id,
             email=user.email,
             password_hash=user.password_hash,
+            role=user.role.value,
         )
 
         self._unit_of_work.stage_add(model)

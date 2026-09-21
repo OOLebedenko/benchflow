@@ -9,6 +9,7 @@ from benchflow.application.services.benches import (
 )
 from benchflow.domain.bench import Bench
 from benchflow.presentation.dependencies.benches import get_bench_service
+from benchflow.presentation.dependencies.permissions import require_admin
 from benchflow.presentation.schemas.benches import (
     BenchCreateRequest,
     BenchResponse,
@@ -81,6 +82,7 @@ async def get_bench(
     "",
     response_model=BenchResponse,
     status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_admin)],
 )
 async def create_bench(
         data: BenchCreateRequest,
@@ -102,6 +104,7 @@ async def create_bench(
 @router.patch(
     "/{bench_id}",
     response_model=BenchResponse,
+    dependencies=[Depends(require_admin)],
 )
 async def update_bench(
         bench_id: UUID,
@@ -131,6 +134,7 @@ async def update_bench(
 @router.delete(
     "/{bench_id}",
     status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[Depends(require_admin)],
 )
 async def delete_bench(
         bench_id: UUID,

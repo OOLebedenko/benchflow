@@ -8,6 +8,7 @@ from benchflow.application.services.runs import (
     BenchUnavailableError,
     RunService,
 )
+from benchflow.presentation.dependencies.auth import get_current_user
 from benchflow.presentation.dependencies.runs import get_run_service
 from benchflow.presentation.schemas.runs import RunResponse
 
@@ -21,6 +22,7 @@ router = APIRouter(
     "/{bench_id}/runs",
     response_model=RunResponse,
     status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(get_current_user)],
 )
 async def start_run(
         bench_id: UUID,
