@@ -27,4 +27,5 @@ async def get_me(
     return UserResponse(
         id=current_user.id,
         email=current_user.email,
+        role=current_user.role,
     )
