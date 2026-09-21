@@ -12,6 +12,7 @@ from benchflow.main import app
 @pytest.fixture
 def client(
         migrated_database_url: str,
+        redis_url: str,
         session_factory: async_sessionmaker[AsyncSession],
         monkeypatch: pytest.MonkeyPatch,
 ) -> Generator[TestClient, None, None]:
@@ -26,6 +27,8 @@ def client(
         jwt_secret="a" * 32,
         jwt_algorithm="HS256",
         access_token_expire_minutes=15,
+        redis_url=redis_url,
+        bench_lock_ttl_seconds=30,
     )
 
     # Redirect the application lifespan from the local database configured
