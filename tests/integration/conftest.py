@@ -6,6 +6,7 @@ from sqlalchemy import delete
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from benchflow.infrastructure.db.models.bench import BenchModel
+from benchflow.infrastructure.db.models.run import RunModel
 from benchflow.infrastructure.db.models.user import UserModel
 from benchflow.infrastructure.db.session import (
     create_engine,
@@ -64,6 +65,7 @@ async def session_factory(
         # Integration tests may commit data, so clean persisted rows
         # before the next test while keeping the schema intact.
         async with factory() as session:
+            await session.execute(delete(RunModel))
             await session.execute(delete(BenchModel))
             await session.execute(delete(UserModel))
             await session.commit()
