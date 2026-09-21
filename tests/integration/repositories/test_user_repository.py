@@ -27,8 +27,11 @@ async def test_add_and_find_user(
     )
 
     async with session_factory() as session:
-        repository = SqlAlchemyUserRepository(session)
         unit_of_work = SqlAlchemyUnitOfWork(session)
+        repository = SqlAlchemyUserRepository(
+            session,
+            unit_of_work,
+        )
 
         # add() only places the model into the current unit of work.
         # flush() sends the pending INSERT to PostgreSQL.
@@ -48,7 +51,11 @@ async def test_find_by_email_returns_none(
     """Return None when no user has the requested email."""
 
     async with session_factory() as session:
-        repository = SqlAlchemyUserRepository(session)
+        unit_of_work = SqlAlchemyUnitOfWork(session)
+        repository = SqlAlchemyUserRepository(
+            session,
+            unit_of_work,
+        )
 
         user = await repository.find_by_email(
             "missing@example.com"
@@ -74,8 +81,11 @@ async def test_flush_rejects_duplicate_email(
     )
 
     async with session_factory() as session:
-        repository = SqlAlchemyUserRepository(session)
         unit_of_work = SqlAlchemyUnitOfWork(session)
+        repository = SqlAlchemyUserRepository(
+            session,
+            unit_of_work,
+        )
 
         # The first flush sends the first INSERT to PostgreSQL,
         # so its email already participates in the UNIQUE constraint
@@ -103,8 +113,11 @@ async def test_commit_makes_flushed_user_visible(
     )
 
     async with session_factory() as write_session:
-        repository = SqlAlchemyUserRepository(write_session)
         unit_of_work = SqlAlchemyUnitOfWork(write_session)
+        repository = SqlAlchemyUserRepository(
+            write_session,
+            unit_of_work,
+        )
 
         # Flush sends the INSERT to PostgreSQL but leaves the
         # surrounding transaction open.
@@ -114,7 +127,13 @@ async def test_commit_makes_flushed_user_visible(
         # A different session uses a different transaction and must not
         # see the writer's uncommitted row.
         async with session_factory() as read_session:
-            reader = SqlAlchemyUserRepository(read_session)
+            reader_unit_of_work = SqlAlchemyUnitOfWork(
+                read_session
+            )
+            reader = SqlAlchemyUserRepository(
+                read_session,
+                reader_unit_of_work,
+            )
 
             assert await reader.find_by_email(user.email) is None
 
@@ -124,4 +143,12 @@ async def test_commit_makes_flushed_user_visible(
 
     # A new session can now read the committed user.
     async with session_factory() as read_session:
-        reader = SqlAlchemyUserRepository(read_session)
+        reader_unit_of_work = SqlAlchemyUnitOfWork(
+            read_session
+        )
+        reader = SqlAlchemyUserRepository(
+            read_session,
+            reader_unit_of_work,
+        )
+
+        assert await reader.find_by_email(user.email) == user

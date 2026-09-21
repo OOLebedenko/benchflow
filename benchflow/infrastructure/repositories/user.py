@@ -5,13 +5,19 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from benchflow.domain.user import User
 from benchflow.infrastructure.db.models.user import UserModel
+from benchflow.infrastructure.db.unit_of_work import SqlAlchemyUnitOfWork
 
 
 class SqlAlchemyUserRepository:
     """Persist users with SQLAlchemy."""
 
-    def __init__(self, session: AsyncSession) -> None:
+    def __init__(
+            self,
+            session: AsyncSession,
+            unit_of_work: SqlAlchemyUnitOfWork,
+    ) -> None:
         self._session = session
+        self._unit_of_work = unit_of_work
 
     async def find_by_id(self, user_id: UUID) -> User | None:
         """Find a user by identifier."""
@@ -59,4 +65,4 @@ class SqlAlchemyUserRepository:
             password_hash=user.password_hash,
         )
 
-        self._session.add(model)
+        self._unit_of_work.stage_add(model)
