@@ -9,6 +9,7 @@ class BenchStatus(StrEnum):
     AVAILABLE = "available"
     MAINTENANCE = "maintenance"
     OFFLINE = "offline"
+    BUSY = "busy"
 
 
 @dataclass(slots=True)

@@ -7,6 +7,9 @@ from sqlalchemy.engine import make_url
 POSTGRES_IMAGE = "postgres:17"
 POSTGRES_DRIVER = "psycopg"
 
+REDIS_IMAGE = "redis:8-alpine"
+REDIS_PORT = 6379
+
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 ALEMBIC_INI = PROJECT_ROOT / "alembic.ini"
 
