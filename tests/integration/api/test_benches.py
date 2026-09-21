@@ -1,10 +1,13 @@
+from collections.abc import Callable
 from uuid import uuid4
 
+import pytest
 from fastapi import status
 from fastapi.testclient import TestClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from benchflow.domain.bench import BenchStatus
+from benchflow.domain.user import UserRole
 from benchflow.infrastructure.db.models.bench import BenchModel
 
 
@@ -104,11 +107,105 @@ async def test_get_bench_returns_not_found(
     }
 
 
+@pytest.mark.parametrize(
+    ("method", "path", "payload"),
+    [
+        (
+                "POST",
+                "/benches",
+                {
+                    "name": "Bench 1",
+                },
+        ),
+        (
+                "PATCH",
+                "/benches/00000000-0000-0000-0000-000000000001",
+                {
+                    "status": "offline",
+                },
+        ),
+        (
+                "DELETE",
+                "/benches/00000000-0000-0000-0000-000000000001",
+                None,
+        ),
+    ],
+)
+def test_bench_writes_require_authentication(
+        client: TestClient,
+        method: str,
+        path: str,
+        payload: dict[str, str] | None,
+) -> None:
+    """Require authentication for bench writes."""
+
+    response = client.request(
+        method,
+        path,
+        json=payload,
+    )
+
+    assert response.status_code == status.HTTP_401_UNAUTHORIZED
+    assert response.json() == {
+        "detail": "Not authenticated",
+    }
+
+
+@pytest.mark.parametrize(
+    ("method", "path", "payload"),
+    [
+        (
+                "POST",
+                "/benches",
+                {
+                    "name": "Bench 1",
+                },
+        ),
+        (
+                "PATCH",
+                "/benches/00000000-0000-0000-0000-000000000001",
+                {
+                    "status": "offline",
+                },
+        ),
+        (
+                "DELETE",
+                "/benches/00000000-0000-0000-0000-000000000001",
+                None,
+        ),
+    ],
+)
+def test_bench_writes_reject_regular_user(
+        client: TestClient,
+        authorize_as: Callable[[UserRole], None],
+        method: str,
+        path: str,
+        payload: dict[str, str] | None,
+) -> None:
+    """Reject regular users from bench writes."""
+
+    authorize_as(UserRole.USER)
+
+    response = client.request(
+        method,
+        path,
+        json=payload,
+    )
+
+    assert response.status_code == status.HTTP_403_FORBIDDEN
+    assert response.json() == {
+        "detail": "Insufficient permissions",
+    }
+
+
 async def test_create_bench(
         client: TestClient,
         session_factory: async_sessionmaker[AsyncSession],
+        authorize_as: Callable[[UserRole], None],
 ) -> None:
     """Create and persist a bench."""
+
+    authorize_as(UserRole.ADMIN)
 
     response = client.post(
         "/benches",
@@ -138,8 +235,11 @@ async def test_create_bench(
 
 async def test_create_bench_uses_available_status_by_default(
         client: TestClient,
+        authorize_as: Callable[[UserRole], None],
 ) -> None:
     """Use available status when it is omitted."""
+
+    authorize_as(UserRole.ADMIN)
 
     response = client.post(
         "/benches",
@@ -154,8 +254,11 @@ async def test_create_bench_uses_available_status_by_default(
 
 def test_update_bench_returns_not_found(
         client: TestClient,
+        authorize_as: Callable[[UserRole], None],
 ) -> None:
     """Return 404 when updating an unknown bench."""
+
+    authorize_as(UserRole.ADMIN)
 
     bench_id = uuid4()
 
@@ -174,8 +277,11 @@ def test_update_bench_returns_not_found(
 
 def test_delete_bench(
         client: TestClient,
+        authorize_as: Callable[[UserRole], None],
 ) -> None:
     """Delete an existing bench."""
+
+    authorize_as(UserRole.ADMIN)
 
     create_response = client.post(
         "/benches",
@@ -201,8 +307,11 @@ def test_delete_bench(
 
 def test_delete_bench_returns_not_found(
         client: TestClient,
+        authorize_as: Callable[[UserRole], None],
 ) -> None:
     """Return 404 when deleting an unknown bench."""
+
+    authorize_as(UserRole.ADMIN)
 
     bench_id = uuid4()
 

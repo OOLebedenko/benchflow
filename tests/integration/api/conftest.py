@@ -1,4 +1,5 @@
-from collections.abc import Generator
+from collections.abc import Callable, Generator
+from uuid import uuid4
 
 import pytest
 from fastapi.testclient import TestClient
@@ -6,7 +7,9 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 import benchflow.presentation.lifespan as lifespan_module
 from benchflow.config import Settings
+from benchflow.domain.user import User, UserRole
 from benchflow.main import app
+from benchflow.presentation.dependencies.auth import get_current_user
 
 
 @pytest.fixture
@@ -40,6 +43,38 @@ def client(
     )
 
     # Using TestClient as a context manager runs the real FastAPI lifespan:
-    # startup creates the engine and session factory, shutdown disposes them.
+    # startup creates application resources and shutdown disposes them.
     with TestClient(app) as test_client:
         yield test_client
+
+
+@pytest.fixture
+def authorize_as() -> Generator[
+    Callable[[UserRole], None],
+    None,
+    None,
+]:
+    """Override the authenticated user for authorization tests."""
+
+    def authorize(role: UserRole) -> None:
+        user = User(
+            id=uuid4(),
+            email=f"{role.value}@example.com",
+            password_hash="hashed-password",
+            role=role,
+        )
+
+        async def override_current_user() -> User:
+            return user
+
+        app.dependency_overrides[
+            get_current_user
+        ] = override_current_user
+
+    try:
+        yield authorize
+    finally:
+        app.dependency_overrides.pop(
+            get_current_user,
+            None,
+        )
